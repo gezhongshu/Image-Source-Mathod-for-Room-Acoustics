@@ -56,17 +56,16 @@ vertex = [0 0  0; ...
           0 4  6];
 
 % Source position
-% src = [4.5, 0.5, 2.0, 1];
-% src = [2 1.5 2 1];
-src = [2 1.5 2];
+% src = [4.5, 0.5, 2.0];
+src = [2 3.5 2];
 
 % Receiver position
-% rcv = [1.5, 2, 2.0, 1];
-rcv = [2 3.5 2 1];
+% rcv = [1.5, 2, 2.0];
+rcv = [2 1.5 2];
 
 T = 0.1; % Total time
 Fs = 96000; % Sample Rate
-beta = 0.4; % Absorbtion Coefficient
+beta = 0.8; % Absorbtion Coefficient
 c = 343.0; % velocity of the sound
 %% Uncomment the following for a 3D plot of the above setup:
  %plot3(SetupStruc.src_traj(:,1),SetupStruc.src_traj(:,2),SetupStruc.src_traj(:,3),'ro-','markersize',4); hold on;
