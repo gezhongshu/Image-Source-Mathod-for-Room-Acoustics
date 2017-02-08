@@ -20,5 +20,6 @@ for n = 1:1:wnum
     temp = dot(testvect,plane(n,1:3));
     if temp < 0
         plane(n,1:3) = -plane(n,1:3);
+        plane(n,4) = -(plane(n,1)*vertex(wall(n,1),1)+plane(n,2)*vertex(wall(n,1),2)+plane(n,3)*vertex(wall(n,1),3));
     end
 end

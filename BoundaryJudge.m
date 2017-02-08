@@ -28,7 +28,7 @@ for m = 1:1:size(wall,2)
         comp = temp;
     end
     % decide if two vectors are in the same direction
-    if temp(1)*comp(1)<0 || temp(2)*comp(2)<0 || temp(3)*comp(3)<0
+    if dot(temp,comp)<0
         th(m) = -theta;
     else
         th(m) = theta;
