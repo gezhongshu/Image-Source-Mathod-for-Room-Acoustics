@@ -1,20 +1,30 @@
 %% Initialization
-clear;
-Initial;
 
-% Source position
-% src = [2 3.5 2];
-src = [4.5, 0.6, 1.9];
+% Initial_Reference_Rectangular;
+% src = [2 3.5 2]; % reference rectangular enclosure source position
+% rcv = [2 1.5 2]; % reference rectangular enclosure reveiver position
 
-% Receiver position
-% rcv = [2 1.5 2];
-rcv = [1.5, 0.8, 1.9];
+% Initial_Queen_Marry_classroom;
+% src = [4.5, 0.6, 1.9]; % Queen Mary classroom source position
+% rcv = [1.5, 0.8, 1.9]; % Queen Mary classroom receiver position
+
+Initial_Queen_Marry_Octagon;
+src = [0, -8, 1.9]; % Queen Mary octagon library
+rcv = [-6, -6, 1.9]; % Queen Mary octagon library
+
+% Initial_Rect;
 
 % display settings
-diplay_audio = '00x00y.wav';
+diplay_audio = 'x00y00_oct.wav';
 overlap_only = 1; % only display overlaped or not 1,0,-1
-refl_order = -1; % reflection order 1,2,-1
+refl_order = 2; % reflection order 1,2,-1
 wallrange = [1 2]; % walls that waves will hit in the second reflection
+
+T = 0.1; % Total time
+Fs = 96000; % Sample Rate
+alpha = 0.05; % Absorbtion Coefficient
+beta = sqrt(1-alpha); 
+c = 343.0; % velocity of the sound
 
 %% Mirroring processing
 % Wall absorbing coefficients
@@ -28,7 +38,7 @@ plane = TPlane(wall,wnum,vertex,src);
 for n = 1:1:N
     if n == 1
         for g = 1:1:wnum
-            image{1,n}{1,g} = Mirror(wall,vertex,src,g);
+            image{1,n}{1,g} = Mirror(wall,vertex,src,g,plane);
             %========================================================
             % Testing of the validity of the point begins 
             % Calculate the cross point between the trajectory and the
@@ -73,12 +83,13 @@ for n = 1:1:N
             % transform the vertex to the new coordinate
             n_vertex = zeros(size(vertex));
             for h = 1:1:size(vertex,1)
-                n_vertex(h,:) = Mirror(wall,vertex,vertex(h,:),g);
+                n_vertex(h,:) = Mirror(wall,vertex,vertex(h,:),g,plane);
             end
             % begin mirroring second order images
             for h = 1:1:wnum
                 if h ~= g && sum(image{1,n-1}{1,g}==rcv)~=3
-                    image{1,n}{g,h} = Mirror(wall,n_vertex,image{1,n-1}{1,g},h);
+                    n_plane = TPlane(wall,wnum,n_vertex,image{1,n-1}{1,g});
+                    image{1,n}{g,h} = Mirror(wall,n_vertex,image{1,n-1}{1,g},h,n_plane);
                     %========================================================
                     % Testing of the validity of the point begins
                     % calculate the cross point between the trajectory and the
@@ -116,8 +127,8 @@ for n = 1:1:N
                     
                     % go to the next order reflections
                     if sum(image{1,n}{g,h}==rcv)~=3
-                        timage = Mirror(wall,vertex,image{1,n}{g,h},g);
-                        trcv = Mirror(wall,vertex,rcv,g);
+                        timage = Mirror(wall,vertex,image{1,n}{g,h},g,plane);
+                        trcv = Mirror(wall,vertex,rcv,g,plane);
                         %calculate the second order cross point between the
                         %trajectory and the previous relfecting walls
                         point2 = CrossPoint(timage,trcv,plane,h);
@@ -176,7 +187,7 @@ for n = 1:1:N
 end
 
 %% compute the IR
-
+% compute the distances and time spent according to each source position
 distance = cell(1,N);
 amplitude = cell(1,N);
 time = cell(1,N);
@@ -198,9 +209,10 @@ Sample = T*Fs;
 TimePoints = 0:Sample-1;
 IR = zeros(Sample,1);
 
+% record energy for the first order reflection
 for n = 1:1:wnum
-    if time{1,1}{1,n} ~= 0
-        %         IR = IR + amplitude{1,1}{1,n} * sinc((TimePoints-time{1,1}{1,n})*Fs*pi);
+    if time{1,1}{1,n} ~= 0 && round(time{1,1}{1,n}*Fs)<=Sample
+%           IR = IR + amplitude{1,1}{1,n} * sinc(TimePoints-time{1,1}{1,n}*Fs).';
         t = TimePoints - round(time{1,1}{1,n}*Fs);
         t(t==0) = Fs*2;
         t(t<Fs*2) = 0;
@@ -208,10 +220,11 @@ for n = 1:1:wnum
         IR = IR + amplitude{1,1}{1,n} * t.';
     end
 end
+% record energy for the second order reflection
 for g = 1:1:wnum
     for h = 1:1:wnum
-        if time{1,2}{g,h} ~= 0
-            %             IR = IR + amplitude{1,2}{g,h} * sinc((TimePoints-time{1,2}{g,h})*Fs*pi);
+        if time{1,2}{g,h} ~= 0 && round(time{1,1}{1,n}*Fs)<=Sample
+%               IR = IR + amplitude{1,2}{g,h} * sinc(TimePoints-time{1,2}{g,h}*Fs).';
             t = TimePoints - round(time{1,2}{g,h}*Fs);
             t(t==0) = Fs*2;
             t(t<Fs*2) = 0;
@@ -237,9 +250,10 @@ if overlap_only == 1 || overlap_only == 0
     [x,fs] = audioread(diplay_audio);
     [ma,R]=max(x); % Find the direct soudn power, which is the lasrgest one
     R2 = find(IR~=0); % Find the first cell that has value
-    di = R-R2(1);
+    di = R-R2(1); % find the position difference between the model and real IR
     figure;
     if overlap_only == 1
+        % match the direct sound position
         if di > 0
             t = 1:Sample;
             x = x(di:Sample+di);
@@ -255,7 +269,10 @@ if overlap_only == 1 || overlap_only == 0
             plot(TimePoints/Fs,IR,'LineWidth',2)
             hold off
         end
+    % plot three graphs including overlapped echograph, real IR and model
+    % IR
     else if overlap_only == 0
+            % match the direct sound position
             if di > 0
                 subplot(3,1,1)
                 t = 1:Sample;
@@ -342,6 +359,10 @@ if refl_order == 1 || refl_order == 2
         end
     %plot the second order reflection paths
     else if refl_order == 2
+            % check if wallrange is correct
+            if max(wallrange)>wnum
+                error('Wall number required exceeds the max number, please modify the wall range')
+            end
             pathx2 = zeros(wnum*3*wnum,2);
             pathy2 = zeros(wnum*3*wnum,2);
             pathz2 = zeros(wnum*3*wnum,2);
