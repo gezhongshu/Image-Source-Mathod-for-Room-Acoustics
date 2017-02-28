@@ -8,33 +8,58 @@
 % src = [4.5, 0.6, 1.9]; % Queen Mary classroom source position
 % rcv = [1.5, 0.8, 1.9]; % Queen Mary classroom receiver position
 
-Initial_Queen_Marry_Octagon;
-src = [0, -8, 1.9]; % Queen Mary octagon library
-rcv = [-6, -6, 1.9]; % Queen Mary octagon library
+% Initial_Queen_Marry_Octagon;
+% src = [0, -8, 1.9]; % Queen Mary octagon library
+% rcv = [-6, -6, 1.9]; % Queen Mary octagon library
 
 % Initial_Rect;
+clc; clear
+Initial_MMR
 
-% display settings
-diplay_audio = 'x00y00_oct.wav';
+% display preference settings
+position = 4; % choose source and reveiver positions
+diplay_audio = 'mmr4.wav';
 overlap_only = 1; % only display overlaped or not 1,0,-1
+imprange = 0; % set the second order impulse that we want to see 0==all -1==none
 refl_order = 2; % reflection order 1,2,-1
-wallrange = [1 2]; % walls that waves will hit in the second reflection
+wallrange = [1:wnum]; % walls that waves will hit in the second reflection
 
-T = 0.1; % Total time
-Fs = 96000; % Sample Rate
-alpha = 0.05; % Absorbtion Coefficient
-beta = sqrt(1-alpha); 
-c = 343.0; % velocity of the sound
+T = 0.3; % Total time
+Fs = 48000; % Sample Rate
+alpha = 0.001; % air absorbtion coefficient
+% beta = sqrt(1-0.05); % Absorbtion Coefficient
+c = 331.4+0.6*23.6; % velocity of the sound
+
+if position == 1
+    % mmr1
+    src = [7.53+dLaser, 7.94+dLaser, 3.63+0.15+dLaser]; % MMR Speaker
+    rcv = [8.42+dLaser, 15.14+dLaser, 3.55+0.13+dLaser]; % MMR Mic
+else if position == 2
+        % mmr2
+        src = [7.53+dLaser, 7.94+dLaser, 3.63+0.15+dLaser]; % MMR Speaker
+        rcv = [11+dLaser, 17.67-dLaser, 3.55+0.13+dLaser]; % MMR Mic
+    else if position == 3
+            % mmr3
+            src = [7.53+dLaser, 7.94+dLaser, 3.63+0.15+dLaser]; % MMR Speaker
+            rcv = [13.6780-dLaser, 15.86-dLaser, 3.55+0.13+dLaser]; % MMR Mic
+        else if position == 4
+                % mmr4
+                src = [7.53+dLaser, 7.94+dLaser, 3.63+0.15+dLaser]; % MMR Speaker
+                rcv = [8.71+dLaser, 16.76-dLaser, 3.55+0.13+dLaser]; % MMR Mic
+            end
+        end
+    end
+end
 
 %% Mirroring processing
 % Wall absorbing coefficients
 % Air absorbing coefficients
-wnum = size(wall,1); % calculate the total wall number
 N = 2;
 image = cell(1,N);
 rpoint = cell(1,1);
 rpoint2 = cell(1,2);
-plane = TPlane(wall,wnum,vertex,src);
+direction = cell(1,N);
+plane = TPlane(wall,wnum,vertex);
 for n = 1:1:N
     if n == 1
         for g = 1:1:wnum
@@ -44,6 +69,7 @@ for n = 1:1:N
             % Calculate the cross point between the trajectory and the
             % relfecting walls
             point = CrossPoint(image{1,n}{1,g},rcv,plane,g);
+            direction{1,n}{1,g} = point - src;
             rpoint{1,n}{1,g} = point;
             % (1)Test if the point is in the path of the two points. If the
             % point is in the path, flag =1, else flag = 0
@@ -88,39 +114,40 @@ for n = 1:1:N
             % begin mirroring second order images
             for h = 1:1:wnum
                 if h ~= g && sum(image{1,n-1}{1,g}==rcv)~=3
-                    n_plane = TPlane(wall,wnum,n_vertex,image{1,n-1}{1,g});
+                    n_plane = TPlane(wall,wnum,n_vertex);
                     image{1,n}{g,h} = Mirror(wall,n_vertex,image{1,n-1}{1,g},h,n_plane);
                     %========================================================
                     % Testing of the validity of the point begins
                     % calculate the cross point between the trajectory and the
                     % relfecting walls
                     point = CrossPoint(image{1,n}{g,h},rcv,plane,g);
-                    rpoint2{1,2}{g,h} = point;
+                    rpoint2{1,1}{g,h} = point;
                     % (1)Test if the point is in the path of the two points
                     flag = InPath(point,image{1,n}{g,h},rcv);
                     if flag == 0
                         image{1,n}{g,h} = rcv;
-                        rpoint2{1,2}{g,h} = [];
+                        rpoint2{1,1}{g,h} = [];
                     end
                     % (2)test if the collision point is in the polygon of walls.
                     flag = BoundaryJudge(wall,vertex,point,g);
                     if flag == 0;
                         image{1,n}{g,h} = rcv;
-                        rpoint2{1,2}{g,h} = [];
+                        rpoint2{1,1}{g,h} = [];
                         %                         disp([g h point]);
                     end
                     % (3)test if there exist any obstructions in the path
                     for l = 1:1:wnum
+                        % test the first part of the path(from the receiver to the first crosspoint)
                         if l ~= g && sum(image{1,n}{g,h}==rcv)~=3 && dot(point-rcv,plane(l,1:3))~=0
                             tpoint = CrossPoint(point,rcv,plane,l);
                             temp = BoundaryJudge(wall,vertex,tpoint,l);
                             if temp == 1
-                            flag = InPath(tpoint,point,rcv);
-                            if flag == 1
-                                image{1,n}{g,h} = rcv;
-                                rpoint2{1,2}{g,h} = [];
-                                disp([g h tpoint point]);
-                            end
+                                flag = InPath(tpoint,point,rcv);
+                                if flag == 1 && ~(abs(sum(tpoint-point))<1e-10 || abs(sum(tpoint-point2))<1e-10)
+                                    image{1,n}{g,h} = rcv;
+                                    rpoint2{1,1}{g,h} = [];
+                                    disp([g h tpoint point]);
+                                end
                             end
                         end
                     end
@@ -132,36 +159,53 @@ for n = 1:1:N
                         %calculate the second order cross point between the
                         %trajectory and the previous relfecting walls
                         point2 = CrossPoint(timage,trcv,plane,h);
-                        rpoint2{1,1}{g,h} = point2;
+                        direction{1,n}{g,h} = point2 - src;
+                        rpoint2{1,2}{g,h} = point2;
                         % test if the point is lying on the cross line of two
-                        % planes, if so, one path must be deleted
+                        % planes. If so, one path must be deleted
                         if point(1)==point2(1) && point(2)==point2(2) && point(3)==point2(3) && g > h
                             image{1,n}{g,h} = rcv;
-                            rpoint2{1,1}{g,h} = [];
+                            rpoint2{1,2}{g,h} = [];
                         end
                         % (1)Test if the point is in the path of the two points
                         flag = InPath(point2,timage,trcv);
                         if flag == 0
                             image{1,n}{g,h} = rcv;
-                            rpoint2{1,1}{g,h} = [];
+                            rpoint2{1,2}{g,h} = [];
                         end
                         % (2)test if the collision point is in the polygon of walls
                         flag = BoundaryJudge(wall,vertex,point2,h);
                         if flag == 0;
                             image{1,n}{g,h} = rcv;
-                            rpoint2{1,1}{g,h} = [];
+                            rpoint2{1,2}{g,h} = [];
                             %                         disp([g h point2]);
                         end
                         % (3)test if there exist any obstructions in the path
                         for l = 1:1:wnum
-                            if l ~= h && sum(image{1,n}{g,h}==rcv)~=3 && dot(point2-rcv,plane(l,1:3))~=0
-                                tpoint = CrossPoint(point2,rcv,plane,l);
+                            % test second part of the path (between two
+                            % crosspoints)
+                            if l ~= h && sum(image{1,n}{g,h}==rcv)~=3 && dot(point2-point,plane(l,1:3))~=0
+                                tpoint = CrossPoint(point2,point,plane,l);
+                                temp = BoundaryJudge(wall,vertex,tpoint,l);
+                                if temp == 1 
+                                    flag = InPath(tpoint,point2,point);
+                                    if flag == 1 && ~(abs(sum(tpoint-point))<1e-10 || abs(sum(tpoint-point2))<1e-10)
+                                        image{1,n}{g,h} = rcv;
+                                        rpoint2{1,2}{g,h} = [];
+                                        disp([g h l tpoint]);
+                                    end
+                                end
+                            end
+                            % test third part of the path (from source to
+                            % the second crosspoint)
+                            if l ~= h && sum(image{1,n}{g,h}==rcv)~=3 && dot(point2-src,plane(l,1:3))~=0
+                                tpoint = CrossPoint(point2,src,plane,l);
                                 temp = BoundaryJudge(wall,vertex,tpoint,l);
                                 if temp == 1
-                                    flag = InPath(tpoint,point2,rcv);
-                                    if flag == 1
+                                    flag = InPath(tpoint,point2,src);
+                                    if flag == 1 && ~(abs(sum(tpoint-point))<1e-10 || abs(sum(tpoint-point2))<1e-10)
                                         image{1,n}{g,h} = rcv;
-                                        rpoint2{1,1}{g,h} = [];
+                                        rpoint2{1,2}{g,h} = [];
                                         disp([g h tpoint point2]);
                                     end
                                 end
@@ -171,6 +215,9 @@ for n = 1:1:N
                     %========================================================
                 else
                     image{1,n}{g,h} = rcv;
+                    rpoint2{1,1}{g,h} = [];
+                    rpoint2{1,2}{g,h} = [];
+                    direction{1,n}{g,h} =[];
                 end
             end
         end
@@ -193,13 +240,19 @@ amplitude = cell(1,N);
 time = cell(1,N);
 for n = 1:1:wnum
     distance{1,1}{1,n} = norm(rcv-image{1,1}{1,n});
-    amplitude{1,1}{1,n} = beta/(4*pi*distance{1,1}{1,n});
+    if ~isempty(direction{1,1}{1,n})
+        spk_coef = direc_judge(src,rcv,direction{1,1}{1,n});
+    end
+    amplitude{1,1}{1,n} = beta(n)/(4*pi*distance{1,1}{1,n})*exp(-alpha*distance{1,1}{1,n})*spk_coef;
     time{1,1}{1,n} = distance{1,1}{1,n}/c;
 end
 for g = 1:1:wnum
     for h = 1:1:wnum
         distance{1,2}{g,h} = norm(rcv-image{1,2}{g,h});
-        amplitude{1,2}{g,h} = beta*beta/(4*pi*distance{1,2}{g,h});
+        if ~isempty(direction{1,2}{g,h})
+            spk_coef = direc_judge(src,rcv,direction{1,2}{g,h});
+        end
+        amplitude{1,2}{g,h} = beta(g)*beta(h)/(4*pi*distance{1,2}{g,h})*exp(-alpha*distance{1,2}{g,h})*spk_coef;
         time{1,2}{g,h} = distance{1,2}{g,h}/c;
     end
 end
@@ -218,22 +271,44 @@ for n = 1:1:wnum
         t(t<Fs*2) = 0;
         t(t==max(t))= 1;
         IR = IR + amplitude{1,1}{1,n} * t.';
+        disp('Fisrt Reflection');
+        disp([n time{1,1}{1,n}]);
     end
 end
 % record energy for the second order reflection
-for g = 1:1:wnum
-    for h = 1:1:wnum
-        if time{1,2}{g,h} ~= 0 && round(time{1,1}{1,n}*Fs)<=Sample
-%               IR = IR + amplitude{1,2}{g,h} * sinc(TimePoints-time{1,2}{g,h}*Fs).';
-            t = TimePoints - round(time{1,2}{g,h}*Fs);
-            t(t==0) = Fs*2;
-            t(t<Fs*2) = 0;
-            t(t==max(t))= 1;
-            IR = IR + amplitude{1,2}{g,h} * t.';
+if imprange ~= -1
+    if sum(imprange)>0
+        for uu = 1:1:size(imprange,2)
+            g = imprange(uu);
+            for h = 1:1:wnum
+                if time{1,2}{g,h} ~= 0 && round(time{1,2}{g,h}*Fs)<=Sample
+                    %               IR = IR + amplitude{1,2}{g,h} * sinc(TimePoints-time{1,2}{g,h}*Fs).';
+                    t = TimePoints - round(time{1,2}{g,h}*Fs);
+                    t(t==0) = Fs*2;
+                    t(t<Fs*2) = 0;
+                    t(t==max(t))= 1;
+                    IR = IR + amplitude{1,2}{g,h} * t.';
+                    disp('Second Reflection');
+                    disp([g h time{1,2}{g,h}]);
+                end
+            end
+        end
+    else if imprange == 0
+            for g = 1:1:wnum
+                for h = 1:1:wnum
+                    if time{1,2}{g,h} ~= 0 && round(time{1,2}{g,h}*Fs)<=Sample
+                        %               IR = IR + amplitude{1,2}{g,h} * sinc(TimePoints-time{1,2}{g,h}*Fs).';
+                        t = TimePoints - round(time{1,2}{g,h}*Fs);
+                        t(t==0) = Fs*2;
+                        t(t<Fs*2) = 0;
+                        t(t==max(t))= 1;
+                        IR = IR + amplitude{1,2}{g,h} * t.';
+                    end
+                end
+            end
         end
     end
 end
-
 % compute the direct sound power
 dd = norm(src-rcv);
 da = 1/(4*pi*dd);
@@ -260,6 +335,7 @@ if overlap_only == 1 || overlap_only == 0
             plot((t)/Fs,x(t))
             hold on
             plot(TimePoints/Fs,IR,'LineWidth',2)
+            grid;
             hold off
         else
             t = 1:Sample;
@@ -267,6 +343,7 @@ if overlap_only == 1 || overlap_only == 0
             plot((t)/Fs,x(t))
             hold on
             plot(TimePoints/Fs,IR,'LineWidth',2)
+            grid;
             hold off
         end
     % plot three graphs including overlapped echograph, real IR and model
@@ -280,6 +357,7 @@ if overlap_only == 1 || overlap_only == 0
                 plot((t)/Fs,x(t))
                 hold on
                 plot(TimePoints/Fs,IR,'LineWidth',2)
+                grid;
                 hold off
             else
                 subplot(3,1,1)
@@ -288,6 +366,7 @@ if overlap_only == 1 || overlap_only == 0
                 plot((t)/Fs,x(t))
                 hold on
                 plot(TimePoints/Fs,IR,'LineWidth',2)
+                grid;
                 hold off
             end
             subplot(3,1,2)
@@ -372,15 +451,15 @@ if refl_order == 1 || refl_order == 2
                 for v = 1:1:wnum
                     if ~isempty(rpoint2{1,1}{u,v}) && ~isempty(rpoint2{1,2}{u,v})
                         w = (u-1)*wnum*3+(v-1)*3+1;
-                        pathx2(w,:) = [src(1),rpoint2{1,1}{u,v}(1)];
-                        pathx2(w+1,:) = [rpoint2{1,1}{u,v}(1),rpoint2{1,2}{u,v}(1)];
-                        pathx2(w+2,:) = [rpoint2{1,2}{u,v}(1),rcv(1)];
-                        pathy2(w,:) = [src(2),rpoint2{1,1}{u,v}(2)];
-                        pathy2(w+1,:) = [rpoint2{1,1}{u,v}(2),rpoint2{1,2}{u,v}(2)];
-                        pathy2(w+2,:) = [rpoint2{1,2}{u,v}(2),rcv(2)];
-                        pathz2(w,:) = [src(3),rpoint2{1,1}{u,v}(3)];
-                        pathz2(w+1,:) = [rpoint2{1,1}{u,v}(3),rpoint2{1,2}{u,v}(3)];
-                        pathz2(w+2,:) = [rpoint2{1,2}{u,v}(3),rcv(3)];
+                        pathx2(w,:) = [src(1),rpoint2{1,2}{u,v}(1)];
+                        pathx2(w+1,:) = [rpoint2{1,2}{u,v}(1),rpoint2{1,1}{u,v}(1)];
+                        pathx2(w+2,:) = [rpoint2{1,1}{u,v}(1),rcv(1)];
+                        pathy2(w,:) = [src(2),rpoint2{1,2}{u,v}(2)];
+                        pathy2(w+1,:) = [rpoint2{1,2}{u,v}(2),rpoint2{1,1}{u,v}(2)];
+                        pathy2(w+2,:) = [rpoint2{1,1}{u,v}(2),rcv(2)];
+                        pathz2(w,:) = [src(3),rpoint2{1,2}{u,v}(3)];
+                        pathz2(w+1,:) = [rpoint2{1,2}{u,v}(3),rpoint2{1,1}{u,v}(3)];
+                        pathz2(w+2,:) = [rpoint2{1,1}{u,v}(3),rcv(3)];
                     end
                 end
             end

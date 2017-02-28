@@ -1,4 +1,4 @@
-function [plane] = TPlane(wall,wnum,vertex,src)
+function [plane] = TPlane(wall,wnum,vertex)
 % transform data form of wall plus vertex to corresponding wall functions
 % in 3D domain. 
 % wall:     arrays including vertexes each wall includes
@@ -16,10 +16,17 @@ for n = 1:1:wnum
     % here we have to test the directions of the plane vectors and set them
     % go backwards the source point. This is a must for later angle
     % calculation in the axis transformation part
-    testvect = vertex(wall(n,1),:)-src(1:3);
-    temp = dot(testvect,plane(n,1:3));
-    if temp < 0
+    vect1 = vertex(wall(n,1),:)-vertex(wall(n,2),:);
+    vect2 = vertex(wall(n,3),:)-vertex(wall(n,2),:);
+    temp = cross(vect1,vect2);
+    if dot(temp, plane(n,1:3))>0
         plane(n,1:3) = -plane(n,1:3);
         plane(n,4) = -(plane(n,1)*vertex(wall(n,1),1)+plane(n,2)*vertex(wall(n,1),2)+plane(n,3)*vertex(wall(n,1),3));
     end
+%         testvect = vertex(wall(n,1),:)-src(1:3);
+%         temp = dot(testvect,plane(n,1:3));
+%         if temp < 0
+%             plane(n,1:3) = -plane(n,1:3);
+%             plane(n,4) = -(plane(n,1)*vertex(wall(n,1),1)+plane(n,2)*vertex(wall(n,1),2)+plane(n,3)*vertex(wall(n,1),3));
+%         end
 end

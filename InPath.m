@@ -5,7 +5,7 @@ function [flag] = InPath(point,imagepoint,rcv)
 flag = 1;
 temp1 = point-imagepoint;
 temp2 = point-rcv;
-if temp1(1)*temp2(1)>0||temp1(2)*temp2(2)>0||temp1(3)*temp2(3)>0||(temp1(1)*temp2(1)==0&&temp1(2)*temp2(2)==0&&temp1(3)*temp2(3)==0)
+if dot(temp1,temp2)>0||(temp1(1)*temp2(1)==0&&temp1(2)*temp2(2)==0&&temp1(3)*temp2(3)==0)
     % cannot return correct results if the receiver is at the wall or
     % corner
     flag = 0;
