@@ -54,31 +54,31 @@ wall = [2  3  7  6  0  0  0  0  0  0; ... % East
 concrete = [0.01 0.01 0.02 0.02 0.02 0.05 0.05];
 wood = [0.09 0.06 0.05 0.05 0.05 0.04 0.04];
 lime = [0.02 0.03 0.04 0.05 0.04 0.03 0.02];
-f = 1; % band number of frequency
-abs_coef = [concrete(f);...     % 1
-        concrete(f);...     % 2
-        concrete(f);...     % 3
-        concrete(f);...     % 4
-        wood(f);...         % 5
-        concrete(f);...     % 6
+% f = 1; % band number of frequency
+abs_coef = [concrete;...     % 1
+        concrete;...     % 2
+        concrete;...     % 3
+        concrete;...     % 4
+        wood;...         % 5
+        concrete;...     % 6
         % The hole at the door
-        lime(f);...         % 7
-        lime(f);...         % 8
-        lime(f);...         % 9
-        concrete(f);...     % 10
-        lime(f);...         % 11
-        lime(f);...         % 12
-        lime(f);...         % 13
-        lime(f);...         % 14
-        lime(f);...         % 15
-        lime(f);...         % 16
-        lime(f);...         % 17 
+        lime;...         % 7
+        lime;...         % 8
+        lime;...         % 9
+        concrete;...     % 10
+        lime;...         % 11
+        lime;...         % 12
+        lime;...         % 13
+        lime;...         % 14
+        lime;...         % 15
+        lime;...         % 16
+        lime;...         % 17 
         % Stairs
-        concrete(f);...     % 18
-        concrete(f);...     % 19
-        concrete(f);...     % 20
-        concrete(f);...     % 21
-        concrete(f);...     % 22
+        concrete;...     % 18
+        concrete;...     % 19
+        concrete;...     % 20
+        concrete;...     % 21
+        concrete;...     % 22
         ]; % wall absorbtion coefficients
 beta = sqrt(1-abs_coef);
 

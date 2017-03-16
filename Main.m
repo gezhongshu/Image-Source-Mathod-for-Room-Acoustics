@@ -17,12 +17,12 @@ clc; clear
 Initial_MMR
 
 % display preference settings
-position = 4; % choose source and reveiver positions
-diplay_audio = 'mmr4.wav';
+position = 1; % choose source and reveiver positions
+diplay_audio = 'mmr1.wav';
+
 overlap_only = 1; % only display overlaped or not 1,0,-1
-imprange = 0; % set the second order impulse that we want to see 0==all -1==none
-refl_order = 2; % reflection order 1,2,-1
-wallrange = [1:wnum]; % walls that waves will hit in the second reflection
+refl_order = 3; % reflection order 1==first only,2==second only,3==all,-1==none
+wallrange = [1:wnum]; % walls that waves will hit in the second reflection -1==none
 
 T = 0.3; % Total time
 Fs = 48000; % Sample Rate
@@ -34,18 +34,22 @@ if position == 1
     % mmr1
     src = [7.53+dLaser, 7.94+dLaser, 3.63+0.15+dLaser]; % MMR Speaker
     rcv = [8.42+dLaser, 15.14+dLaser, 3.55+0.13+dLaser]; % MMR Mic
+    ref_direc = [0 1 0];
 else if position == 2
         % mmr2
         src = [7.53+dLaser, 7.94+dLaser, 3.63+0.15+dLaser]; % MMR Speaker
         rcv = [11+dLaser, 17.67-dLaser, 3.55+0.13+dLaser]; % MMR Mic
+        ref_direc = [0 1 0];
     else if position == 3
             % mmr3
             src = [7.53+dLaser, 7.94+dLaser, 3.63+0.15+dLaser]; % MMR Speaker
             rcv = [13.6780-dLaser, 15.86-dLaser, 3.55+0.13+dLaser]; % MMR Mic
+            ref_direc = [0 1 0];
         else if position == 4
                 % mmr4
                 src = [7.53+dLaser, 7.94+dLaser, 3.63+0.15+dLaser]; % MMR Speaker
                 rcv = [8.71+dLaser, 16.76-dLaser, 3.55+0.13+dLaser]; % MMR Mic
+                ref_direc = [0 1 0];
             end
         end
     end
@@ -65,7 +69,7 @@ for n = 1:1:N
         for g = 1:1:wnum
             image{1,n}{1,g} = Mirror(wall,vertex,src,g,plane);
             %========================================================
-            % Testing of the validity of the point begins 
+            % Testing of the validity of the point begins
             % Calculate the cross point between the trajectory and the
             % relfecting walls
             point = CrossPoint(image{1,n}{1,g},rcv,plane,g);
@@ -187,7 +191,7 @@ for n = 1:1:N
                             if l ~= h && sum(image{1,n}{g,h}==rcv)~=3 && dot(point2-point,plane(l,1:3))~=0
                                 tpoint = CrossPoint(point2,point,plane,l);
                                 temp = BoundaryJudge(wall,vertex,tpoint,l);
-                                if temp == 1 
+                                if temp == 1
                                     flag = InPath(tpoint,point2,point);
                                     if flag == 1 && ~(abs(sum(tpoint-point))<1e-10 || abs(sum(tpoint-point2))<1e-10)
                                         image{1,n}{g,h} = rcv;
@@ -232,29 +236,82 @@ for n = 1:1:N
     %         end
     %     end
 end
+    
+%     n = 1;
+%     for g = 1:1:wnum
+%         
+%     end
+%     
+%     n = 2;
+%     for g = 1:1:wnum
+%         for h = 1:1:wnum
+%             if h ~= g && sum(image{1,n-1}{1,g}==rcv)~=3
+%            
+%             end
+%         end
+%     end
+% 
 
 %% compute the IR
 % compute the distances and time spent according to each source position
 distance = cell(1,N);
 amplitude = cell(1,N);
 time = cell(1,N);
-for n = 1:1:wnum
-    distance{1,1}{1,n} = norm(rcv-image{1,1}{1,n});
-    if ~isempty(direction{1,1}{1,n})
-        spk_coef = direc_judge(src,rcv,direction{1,1}{1,n});
+
+if refl_order == 1 || refl_order == 3 
+    for n = 1:1:wnum
+        distance{1,1}{1,n} = norm(rcv-image{1,1}{1,n});
+        for m = 1:1:size(beta,2)
+            if m == 1
+                if ~isempty(direction{1,1}{1,n})
+                    spk_coef = direc_judge(ref_direc,direction{1,1}{1,n});
+                end
+                temp = beta(n)/(4*pi*distance{1,1}{1,n})*exp(-alpha*distance{1,1}{1,n})*spk_coef;
+                amplitude{1,1}{1,n} = temp;
+            else
+                if ~isempty(direction{1,1}{1,n})
+                    spk_coef = direc_judge(ref_direc,direction{1,1}{1,n});
+                end
+                temp = beta(n)/(4*pi*distance{1,1}{1,n})*exp(-alpha*distance{1,1}{1,n})*spk_coef;
+                amplitude{1,1}{1,n} = amplitude{1,1}{1,n} + temp;
+            end
+        end
+        amplitude{1,1}{1,n} = amplitude{1,1}{1,n}/size(beta,2);
+        
+        if ~isempty(direction{1,1}{1,n})
+            spk_coef = direc_judge(ref_direc,direction{1,1}{1,n});
+        end
+        temp = beta(n)/(4*pi*distance{1,1}{1,n})*exp(-alpha*distance{1,1}{1,n})*spk_coef;
+        amplitude{1,1}{1,n} = temp;
+        time{1,1}{1,n} = distance{1,1}{1,n}/c;
     end
-    amplitude{1,1}{1,n} = beta(n)/(4*pi*distance{1,1}{1,n})*exp(-alpha*distance{1,1}{1,n})*spk_coef;
-    time{1,1}{1,n} = distance{1,1}{1,n}/c;
 end
+
+if refl_order == 2 || refl_order == 3 
 for g = 1:1:wnum
     for h = 1:1:wnum
         distance{1,2}{g,h} = norm(rcv-image{1,2}{g,h});
-        if ~isempty(direction{1,2}{g,h})
-            spk_coef = direc_judge(src,rcv,direction{1,2}{g,h});
+        for l = 1:1:size(beta,2)
+            if l == 1
+                spk_coef = 1;
+                if ~isempty(direction{1,2}{g,h})
+                    spk_coef = direc_judge(ref_direc,direction{1,2}{g,h});
+                end
+                temp = beta(g)*beta(h)/(4*pi*distance{1,2}{g,h})*exp(-alpha*distance{1,2}{g,h})*spk_coef;
+                amplitude{1,2}{g,h} = temp;
+            else
+                spk_coef = 1;
+                if ~isempty(direction{1,2}{g,h})
+                    spk_coef = direc_judge(ref_direc,direction{1,2}{g,h});
+                end
+                temp = beta(g)*beta(h)/(4*pi*distance{1,2}{g,h})*exp(-alpha*distance{1,2}{g,h})*spk_coef;
+                amplitude{1,2}{g,h} = amplitude{1,2}{g,h} + temp;
+            end
         end
-        amplitude{1,2}{g,h} = beta(g)*beta(h)/(4*pi*distance{1,2}{g,h})*exp(-alpha*distance{1,2}{g,h})*spk_coef;
+        amplitude{1,2}{g,h} = amplitude{1,2}{g,h}/size(beta,2);
         time{1,2}{g,h} = distance{1,2}{g,h}/c;
     end
+end
 end
 
 Sample = T*Fs;
@@ -263,38 +320,26 @@ TimePoints = 0:Sample-1;
 IR = zeros(Sample,1);
 
 % record energy for the first order reflection
-for n = 1:1:wnum
-    if time{1,1}{1,n} ~= 0 && round(time{1,1}{1,n}*Fs)<=Sample
-%           IR = IR + amplitude{1,1}{1,n} * sinc(TimePoints-time{1,1}{1,n}*Fs).';
-        t = TimePoints - round(time{1,1}{1,n}*Fs);
-        t(t==0) = Fs*2;
-        t(t<Fs*2) = 0;
-        t(t==max(t))= 1;
-        IR = IR + amplitude{1,1}{1,n} * t.';
-        disp('Fisrt Reflection');
-        disp([n time{1,1}{1,n}]);
+if refl_order == 1 || refl_order == 3
+    for n = 1:1:wnum
+        if time{1,1}{1,n} ~= 0 && round(time{1,1}{1,n}*Fs)<=Sample
+            %           IR = IR + amplitude{1,1}{1,n} * sinc(TimePoints-time{1,1}{1,n}*Fs).';
+            t = TimePoints - round(time{1,1}{1,n}*Fs);
+            t(t==0) = Fs*2;
+            t(t<Fs*2) = 0;
+            t(t==max(t))= 1;
+            IR = IR + amplitude{1,1}{1,n} * t.';
+            disp('Fisrt Reflection');
+            disp([n time{1,1}{1,n}]);
+        end
     end
 end
 % record energy for the second order reflection
-if imprange ~= -1
-    if sum(imprange)>0
-        for uu = 1:1:size(imprange,2)
-            g = imprange(uu);
-            for h = 1:1:wnum
-                if time{1,2}{g,h} ~= 0 && round(time{1,2}{g,h}*Fs)<=Sample
-                    %               IR = IR + amplitude{1,2}{g,h} * sinc(TimePoints-time{1,2}{g,h}*Fs).';
-                    t = TimePoints - round(time{1,2}{g,h}*Fs);
-                    t(t==0) = Fs*2;
-                    t(t<Fs*2) = 0;
-                    t(t==max(t))= 1;
-                    IR = IR + amplitude{1,2}{g,h} * t.';
-                    disp('Second Reflection');
-                    disp([g h time{1,2}{g,h}]);
-                end
-            end
-        end
-    else if imprange == 0
-            for g = 1:1:wnum
+if refl_order == 2 || refl_order == 3
+    if wallrange ~= -1
+        if sum(wallrange)>0
+            for uu = 1:1:size(wallrange,2)
+                g = wallrange(uu);
                 for h = 1:1:wnum
                     if time{1,2}{g,h} ~= 0 && round(time{1,2}{g,h}*Fs)<=Sample
                         %               IR = IR + amplitude{1,2}{g,h} * sinc(TimePoints-time{1,2}{g,h}*Fs).';
@@ -303,6 +348,22 @@ if imprange ~= -1
                         t(t<Fs*2) = 0;
                         t(t==max(t))= 1;
                         IR = IR + amplitude{1,2}{g,h} * t.';
+                        disp('Second Reflection');
+                        disp([g h time{1,2}{g,h}]);
+                    end
+                end
+            end
+        else if wallrange == 0
+                for g = 1:1:wnum
+                    for h = 1:1:wnum
+                        if time{1,2}{g,h} ~= 0 && round(time{1,2}{g,h}*Fs)<=Sample
+                            %               IR = IR + amplitude{1,2}{g,h} * sinc(TimePoints-time{1,2}{g,h}*Fs).';
+                            t = TimePoints - round(time{1,2}{g,h}*Fs);
+                            t(t==0) = Fs*2;
+                            t(t<Fs*2) = 0;
+                            t(t==max(t))= 1;
+                            IR = IR + amplitude{1,2}{g,h} * t.';
+                        end
                     end
                 end
             end
@@ -379,7 +440,7 @@ end
 
 %% visualize the reflection path
 % plot the room frame
-if refl_order == 1 || refl_order == 2
+if refl_order ~= -1
     figure;
     xx = zeros(wnum*size(wall,2),2);
     yy = zeros(wnum*size(wall,2),2);
@@ -408,7 +469,7 @@ if refl_order == 1 || refl_order == 2
     plot3(src(1),src(2),src(3),'.','MarkerSize',50) % Source position
     plot3(rcv(1),rcv(2),rcv(3),'.','MarkerSize',50) % Receiver position
     % plot the first order reflection paths
-    if refl_order == 1
+    if refl_order == 1 || refl_order == 3
         pathx = zeros(wnum*2,2);
         pathy = zeros(wnum*2,2);
         pathz = zeros(wnum*2,2);
@@ -436,46 +497,48 @@ if refl_order == 1 || refl_order == 2
         for u = 1:2:wnum*2-1
             plot3(pathx(:,u:u+1), pathy(:,u:u+1), pathz(:,u:u+1),'Color',color((u+1)/2,:),'LineStyle','-','LineWidth',2)
         end
-    %plot the second order reflection paths
-    else if refl_order == 2
+        %plot the second order reflection paths
+        if refl_order == 2 || refl_order == 3
             % check if wallrange is correct
-            if max(wallrange)>wnum
-                error('Wall number required exceeds the max number, please modify the wall range')
-            end
-            pathx2 = zeros(wnum*3*wnum,2);
-            pathy2 = zeros(wnum*3*wnum,2);
-            pathz2 = zeros(wnum*3*wnum,2);
-            %             for u = 2*3-2:3:2*3-2
-            for uu = 1:1:size(wallrange,2)
-                u = wallrange(uu);
-                for v = 1:1:wnum
-                    if ~isempty(rpoint2{1,1}{u,v}) && ~isempty(rpoint2{1,2}{u,v})
-                        w = (u-1)*wnum*3+(v-1)*3+1;
-                        pathx2(w,:) = [src(1),rpoint2{1,2}{u,v}(1)];
-                        pathx2(w+1,:) = [rpoint2{1,2}{u,v}(1),rpoint2{1,1}{u,v}(1)];
-                        pathx2(w+2,:) = [rpoint2{1,1}{u,v}(1),rcv(1)];
-                        pathy2(w,:) = [src(2),rpoint2{1,2}{u,v}(2)];
-                        pathy2(w+1,:) = [rpoint2{1,2}{u,v}(2),rpoint2{1,1}{u,v}(2)];
-                        pathy2(w+2,:) = [rpoint2{1,1}{u,v}(2),rcv(2)];
-                        pathz2(w,:) = [src(3),rpoint2{1,2}{u,v}(3)];
-                        pathz2(w+1,:) = [rpoint2{1,2}{u,v}(3),rpoint2{1,1}{u,v}(3)];
-                        pathz2(w+2,:) = [rpoint2{1,1}{u,v}(3),rcv(3)];
+            if wallrange ~= -1
+                if max(wallrange)>wnum
+                    error('Wall number required exceeds the max number, please modify the wall range!')
+                end
+                pathx2 = zeros(wnum*3*wnum,2);
+                pathy2 = zeros(wnum*3*wnum,2);
+                pathz2 = zeros(wnum*3*wnum,2);
+                %             for u = 2*3-2:3:2*3-2
+                for uu = 1:1:size(wallrange,2)
+                    u = wallrange(uu);
+                    for v = 1:1:wnum
+                        if ~isempty(rpoint2{1,1}{u,v}) && ~isempty(rpoint2{1,2}{u,v})
+                            w = (u-1)*wnum*3+(v-1)*3+1;
+                            pathx2(w,:) = [src(1),rpoint2{1,2}{u,v}(1)];
+                            pathx2(w+1,:) = [rpoint2{1,2}{u,v}(1),rpoint2{1,1}{u,v}(1)];
+                            pathx2(w+2,:) = [rpoint2{1,1}{u,v}(1),rcv(1)];
+                            pathy2(w,:) = [src(2),rpoint2{1,2}{u,v}(2)];
+                            pathy2(w+1,:) = [rpoint2{1,2}{u,v}(2),rpoint2{1,1}{u,v}(2)];
+                            pathy2(w+2,:) = [rpoint2{1,1}{u,v}(2),rcv(2)];
+                            pathz2(w,:) = [src(3),rpoint2{1,2}{u,v}(3)];
+                            pathz2(w+1,:) = [rpoint2{1,2}{u,v}(3),rpoint2{1,1}{u,v}(3)];
+                            pathz2(w+2,:) = [rpoint2{1,1}{u,v}(3),rcv(3)];
+                        end
                     end
                 end
-            end
-            pathx2 = pathx2';
-            pathy2 = pathy2';
-            pathz2 = pathz2';
-            color = zeros(wnum*wnum,3);
-            for u = 1:1:wnum*wnum
-                % set color arrays. The color gets red when the second
-                % value is lower, and it gets blue when the first value is
-                % lower, gets yellow when the third value is lower
-%                 color(u,:) = [0.3+0.7*u/(wnum*wnum),0.8*u/(wnum*wnum),0.7+0.2*u/(wnum*wnum)];
-                color(u,:) = [0.6+0.4*rand(),0.9*rand(),0.9+0.1*rand()];
-            end
-            for u = 1:3:wnum*3*wnum-2
-                plot3(pathx2(:,u:u+2), pathy2(:,u:u+2), pathz2(:,u:u+2),'Color',color((u+2)/3,:),'LineStyle','-','LineWidth',2)
+                pathx2 = pathx2';
+                pathy2 = pathy2';
+                pathz2 = pathz2';
+                color = zeros(wnum*wnum,3);
+                for u = 1:1:wnum*wnum
+                    % set color arrays. The color gets red when the second
+                    % value is lower, and it gets blue when the first value is
+                    % lower, gets yellow when the third value is lower
+                    %                 color(u,:) = [0.3+0.7*u/(wnum*wnum),0.8*u/(wnum*wnum),0.7+0.2*u/(wnum*wnum)];
+                    color(u,:) = [0.6+0.4*rand(),0.9*rand(),0.9+0.1*rand()];
+                end
+                for u = 1:3:wnum*3*wnum-2
+                    plot3(pathx2(:,u:u+2), pathy2(:,u:u+2), pathz2(:,u:u+2),'Color',color((u+2)/3,:),'LineStyle','-','LineWidth',2)
+                end
             end
         end
     end
