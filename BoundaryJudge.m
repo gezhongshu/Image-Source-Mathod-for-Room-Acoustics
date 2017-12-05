@@ -37,6 +37,6 @@ for m = 1:1:size(wall,2)
         break
     end
 end
-if abs(sum(th)) <= 1.0000e-04
+if abs(sum(th)) <= 0.1
     flag = 0;
 end
